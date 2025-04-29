@@ -455,3 +455,29 @@ the [Apache 2.0 License](LICENSE).
 
 The CogVideoX-5B model (Transformers module, include I2V and T2V) is released under
 the [CogVideoX LICENSE](https://huggingface.co/THUDM/CogVideoX-5b/blob/main/LICENSE).
+
+
+## 切換到CogVideo的虛擬環境
+cd ~/CogVideo/    # 先切到有虛擬環境的資料夾
+source .cogvideo/bin/activate   # 啟動虛擬環境
+
+## GPU 步驟	指令
+
+## 清掉爛掉的驅動	
+sudo apt-get purge nvidia*
+## 更新系統	
+sudo apt-get update && sudo apt-get upgrade
+## 自動安裝正確驅動 	
+sudo ubuntu-drivers autoinstall
+## 重開機讓驅動生效	
+sudo reboot
+## 驗證	
+nvidia-smi
+
+
+# 可以調整這幾個參數來降低記憶體使用：
+
+height 和 width：解析度對記憶體影響最大，可以從 512x512 降到 384x384 或 320x320
+num_frames：幀數也很吃記憶體，可以從 16 降到 8 或 12
+num_inference_steps：步驟數可以從 50 降到 30-40
+guidance_scale：這個影響較小，但也可以從 7.5 降到 6
