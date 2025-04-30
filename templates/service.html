@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CogVideo 服務</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .prompt-container {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .video-preview {
+            width: 384px;
+            height: 384px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .loading {
+            display: none;
+        }
+        .improved-prompt {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container my-5">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div class="d-flex align-items-center gap-3">
+                <h1>CogVideo 影片生成服務</h1>
+                <button class="btn btn-outline-success" id="addPromptBlock">
+                    <i class="bi bi-plus-lg"></i> 新增提示詞區塊
+                </button>
+            </div>
+            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                <i class="bi bi-gear-fill"></i> 設定
+            </button>
+        </div>
+        
+        <div class="row" id="promptBlocksContainer">
+            <!-- 提示詞區塊會動態新增到這裡 -->
+            <div class="col-12 mb-4 prompt-block">
+                <div class="prompt-container">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label prompt-label">提示詞 1</label>
+                                <button class="btn btn-outline-danger btn-sm remove-prompt-block" style="display: none;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="form-group">
+                                <div class="input-group">
+                                    <textarea class="form-control prompt-input" rows="3" placeholder="請輸入提示詞..."></textarea>
+                                    <button class="btn btn-outline-primary improve-btn">
+                                        改善提示詞
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="improved-prompt"></div>
+                            <div class="d-grid gap-2 mt-3">
+                                <button class="btn btn-primary generate-btn">生成影片</button>
+                            </div>
+                            <div class="loading text-center mt-3" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">生成中...</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="video-preview">
+                                <span class="text-muted">影片預覽區</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 設定彈窗 -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel">生成設定</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="col-md-12">
+                        <ul class="nav nav-tabs mb-3" id="generateTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text" type="button" role="tab">文字生成視頻</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image" type="button" role="tab">圖片生成視頻</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="generateTabsContent">
+                            <div class="tab-pane fade show active" id="text" role="tabpanel">
+                                <form id="settingsForm" class="mb-4">
+                                    <div class="form-group mb-4">
+                                        <label for="negative_prompt">負面提示詞（選填）：</label>
+                                        <textarea class="form-control" id="negative_prompt" name="negative_prompt" rows="2" placeholder="輸入你不想在視頻中出現的元素"></textarea>
+                                        <small class="form-text text-muted">用於抑制不想要的元素，如：「模糊的、低質量的、變形的」</small>
+                                    </div>
+
+                                    <div class="form-group mb-4">
+                                        <label for="num_inference_steps">推理步驟數：</label>
+                                        <input type="range" class="form-range" id="num_inference_steps" name="num_inference_steps" value="50" min="20" max="150" step="5">
+                                        <div class="d-flex justify-content-between">
+                                            <small class="text-muted">較快 (20)</small>
+                                            <small class="text-muted" id="num_inference_steps_value">50</small>
+                                            <small class="text-muted">更多細節 (150)</small>
+                                        </div>
+                                        <small class="form-text text-muted">增加步驟數可以提高細節質量，但會增加生成時間</small>
+                                    </div>
+                                    
+                                    <div class="form-group mb-4">
+                                        <label for="guidance_scale">Guidance Scale：</label>
+                                        <input type="range" class="form-range" id="guidance_scale" name="guidance_scale" value="6.5" min="1" max="20" step="0.5">
+                                        <div class="d-flex justify-content-between">
+                                            <small class="text-muted">創意 (1)</small>
+                                            <small class="text-muted" id="guidance_scale_value">6.5</small>
+                                            <small class="text-muted">精確 (20)</small>
+                                        </div>
+                                        <small class="form-text text-muted">控制與提示詞的匹配程度，較高的值會產生更精確的結果</small>
+                                    </div>
+                                    
+                                    <div class="form-group mb-4">
+                                        <label for="height">高度：</label>
+                                        <input type="number" class="form-control" id="height" name="height" value="384" step="64" min="128" max="1024">
+                                    </div>
+                                    
+                                    <div class="form-group mb-4">
+                                        <label for="width">寬度：</label>
+                                        <input type="number" class="form-control" id="width" name="width" value="384" step="64" min="128" max="1024">
+                                    </div>
+                                    
+                                    <div class="form-group mb-4">
+                                        <label for="num_frames">幀數：</label>
+                                        <select class="form-control" id="num_frames" name="num_frames">
+                                            <option value="24" selected>24 幀 (6秒)</option>
+                                            <option value="32">32 幀 (8秒)</option>
+                                            <option value="40">40 幀 (10秒)</option>
+                                        </select>
+                                        <small class="form-text text-muted">以 4fps 播放</small>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="image" role="tabpanel">
+                                <form id="imageSettingsForm" class="mb-4">
+                                    <div class="form-group mb-3">
+                                        <label for="image_num_frames">幀數：</label>
+                                        <select class="form-control" id="image_num_frames" name="num_frames">
+                                            <option value="24">24 幀 (6秒)</option>
+                                            <option value="32">32 幀 (8秒)</option>
+                                            <option value="40">40 幀 (10秒)</option>
+                                        </select>
+                                        <small class="form-text text-muted">以 4fps 播放</small>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveSettings">保存設定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let promptBlockCount = 1;
+            
+            // 新增提示詞區塊的函數
+            function addPromptBlock() {
+                promptBlockCount++;
+                const container = document.getElementById('promptBlocksContainer');
+                const newBlock = document.querySelector('.prompt-block').cloneNode(true);
+                
+                // 更新標籤編號
+                newBlock.querySelector('.prompt-label').textContent = `提示詞 ${promptBlockCount}`;
+                
+                // 清空輸入和改善結果
+                newBlock.querySelector('.prompt-input').value = '';
+                newBlock.querySelector('.improved-prompt').textContent = '';
+                
+                // 顯示刪除按鈕
+                newBlock.querySelector('.remove-prompt-block').style.display = 'block';
+                
+                // 添加事件監聽器
+                addBlockEventListeners(newBlock);
+                
+                container.appendChild(newBlock);
+                updateRemoveButtons();
+            }
+            
+            // 為區塊添加事件監聽器
+            function addBlockEventListeners(block) {
+                const improveBtn = block.querySelector('.improve-btn');
+                const generateBtn = block.querySelector('.generate-btn');
+                const removeBtn = block.querySelector('.remove-prompt-block');
+                const promptInput = block.querySelector('.prompt-input');
+                const improvedPromptDiv = block.querySelector('.improved-prompt');
+                
+                improveBtn.addEventListener('click', async function() {
+                    try {
+                        const response = await fetch('/improve_prompt', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ prompt: promptInput.value })
+                        });
+                        
+                        const data = await response.json();
+                        improvedPromptDiv.textContent = data.improved_prompt;
+                        improvedPromptDiv.style.display = 'block';
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('改善提示詞時發生錯誤');
+                    }
+                });
+                
+                generateBtn.addEventListener('click', async function() {
+                    const loadingDiv = block.querySelector('.loading');
+                    const videoDiv = block.querySelector('.video-preview');
+                    
+                    loadingDiv.style.display = 'block';
+                    
+                    try {
+                        const response = await fetch('/generate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ prompt: promptInput.value })
+                        });
+                        
+                        const data = await response.json();
+                        videoDiv.innerHTML = `
+                            <video width="384" height="384" controls>
+                                <source src="/static/${data.video_path}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        `;
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('生成影片時發生錯誤');
+                    } finally {
+                        loadingDiv.style.display = 'none';
+                    }
+                });
+                
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', function() {
+                        block.remove();
+                        updateRemoveButtons();
+                        updatePromptLabels();
+                    });
+                }
+            }
+            
+            // 更新刪除按鈕顯示狀態
+            function updateRemoveButtons() {
+                const blocks = document.querySelectorAll('.prompt-block');
+                blocks.forEach((block, index) => {
+                    const removeBtn = block.querySelector('.remove-prompt-block');
+                    removeBtn.style.display = blocks.length > 1 ? 'block' : 'none';
+                });
+            }
+            
+            // 更新提示詞區塊的標籤
+            function updatePromptLabels() {
+                document.querySelectorAll('.prompt-block').forEach((block, index) => {
+                    block.querySelector('.prompt-label').textContent = `提示詞 ${index + 1}`;
+                });
+                promptBlockCount = document.querySelectorAll('.prompt-block').length;
+            }
+            
+            // 為新增按鈕添加事件監聽器
+            document.getElementById('addPromptBlock').addEventListener('click', addPromptBlock);
+            
+            // 為初始區塊添加事件監聽器
+            addBlockEventListeners(document.querySelector('.prompt-block'));
+            updateRemoveButtons();
+            // 更新範圍滑塊的值顯示
+            document.getElementById('num_inference_steps').addEventListener('input', function() {
+                document.getElementById('num_inference_steps_value').textContent = this.value;
+            });
+
+            document.getElementById('guidance_scale').addEventListener('input', function() {
+                document.getElementById('guidance_scale_value').textContent = this.value;
+            });
+
+            // 保存設定
+            document.getElementById('saveSettings').addEventListener('click', function() {
+                const settings = {
+                    negative_prompt: document.getElementById('negative_prompt').value,
+                    num_inference_steps: document.getElementById('num_inference_steps').value,
+                    guidance_scale: document.getElementById('guidance_scale').value,
+                    height: document.getElementById('height').value,
+                    width: document.getElementById('width').value,
+                    num_frames: document.getElementById('num_frames').value,
+                    image_num_frames: document.getElementById('image_num_frames').value
+                };
+                
+                // 保存設定到 localStorage
+                localStorage.setItem('cogvideoSettings', JSON.stringify(settings));
+                
+                // 關閉模態框
+                const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+                modal.hide();
+            });
+
+            // 載入保存的設定
+            const savedSettings = localStorage.getItem('cogvideoSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                Object.entries(settings).forEach(([key, value]) => {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        element.value = value;
+                        // 更新範圍滑塊的顯示值
+                        if (key === 'num_inference_steps' || key === 'guidance_scale') {
+                            document.getElementById(`${key}_value`).textContent = value;
+                        }
+                    }
+                });
+            }
+            // 改善提示詞
+            document.querySelectorAll('.improve-btn').forEach(button => {
+                button.addEventListener('click', async function() {
+                    const promptId = this.dataset.promptId;
+                    const promptText = document.getElementById(`prompt${promptId}`).value;
+                    const improvedPromptDiv = document.getElementById(`improved${promptId}`);
+                    
+                    try {
+                        const response = await fetch('/improve_prompt', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ prompt: promptText })
+                        });
+                        
+                        const data = await response.json();
+                        improvedPromptDiv.textContent = data.improved_prompt;
+                        improvedPromptDiv.style.display = 'block';
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('改善提示詞時發生錯誤');
+                    }
+                });
+            });
+
+            // 生成影片
+            document.querySelectorAll('.generate-btn').forEach(button => {
+                button.addEventListener('click', async function() {
+                    const promptId = this.dataset.promptId;
+                    const promptText = document.getElementById(`prompt${promptId}`).value;
+                    const loadingDiv = document.getElementById(`loading${promptId}`);
+                    const videoDiv = document.getElementById(`video${promptId}`);
+                    
+                    loadingDiv.style.display = 'block';
+                    
+                    try {
+                        const response = await fetch('/generate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ prompt: promptText })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        // 清除預覽區並添加影片
+                        videoDiv.innerHTML = `
+                            <video width="384" height="384" controls>
+                                <source src="/static/${data.video_path}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        `;
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('生成影片時發生錯誤');
+                    } finally {
+                        loadingDiv.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

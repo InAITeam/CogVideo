@@ -456,6 +456,7 @@ the [Apache 2.0 License](LICENSE).
 The CogVideoX-5B model (Transformers module, include I2V and T2V) is released under
 the [CogVideoX LICENSE](https://huggingface.co/THUDM/CogVideoX-5b/blob/main/LICENSE).
 
+## 可能遇到的問題題解決方法 ##
 
 ## 切換到CogVideo的虛擬環境
 cd ~/CogVideo/    # 先切到有虛擬環境的資料夾
@@ -481,3 +482,17 @@ height 和 width：解析度對記憶體影響最大，可以從 512x512 降到 
 num_frames：幀數也很吃記憶體，可以從 16 降到 8 或 12
 num_inference_steps：步驟數可以從 50 降到 30-40
 guidance_scale：這個影響較小，但也可以從 7.5 降到 6
+
+
+# cuda 不正常
+sudo mkdir -p /usr/local/cuda/bin && sudo ln -s /usr/bin/nvcc /usr/local/cuda/bin/nvcc
+
+# 更新上游分支
+git fetch upstream
+# 合併上游分支
+git merge upstream/main
+# 推送到遠端
+git push origin main
+
+# 監控GPU使用情況
+watch -n 1 nvidia-smi
